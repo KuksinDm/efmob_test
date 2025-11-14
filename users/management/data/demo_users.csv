@@ -1,0 +1,6 @@
+email,first_name,last_name,password,roles
+admin@example.com,Admin,User,Passw0rd!,"admin"
+manager@example.com,Manager,User,Passw0rd!,"manager"
+user@example.com,Regular,User,Passw0rd!,"user"
+guest@example.com,Guest,User,Passw0rd!,"guest"
+
