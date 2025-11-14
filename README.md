@@ -30,14 +30,14 @@
 | `users_refreshtoken` | Refresh-токены с `revoked`, `expires_at`, `jti` |
 | `users_revokedaccesstoken` | Blacklist access-токенов (по `jti`) |
 
-> Для быстрого старта есть команда `python manage.py load_mock_data`, которая читает CSV из `users/management/data/` (роли, элементы, правила, пользователи, demo-items). Её можно повторно запускать для синхронизации справочников или подменять каталог данных.
+> Для быстрого старта есть команда `python manage.py load_mock_data`, которая читает CSV из `users/management/data/` (роли, элементы, правила, пользователи, demo-items). Ее можно повторно запускать для синхронизации справочников или подменять каталог данных.
 
 ## RBAC-правила
-- `read` — доступ только к собственным объектам.
-- `read_all` — чтение любых объектов элемента.
+- `read` - доступ только к собственным объектам.
+- `read_all` - чтение любых объектов элемента.
 - Аналогично для `create`, `update`, `update_all`, `delete`, `delete_all`.
 - Permission `HasAccessPermission` автоматически применяет правила, проверяет owner, возвращает 401/403.
-- Элемент указывается в `viewset.element_code` (например, `"items"`), и permission берёт агрегированное правило по ролям пользователя.
+- Элемент указывается в `viewset.element_code` (например, `"items"`), и permission берет агрегированное правило по ролям пользователя.
 
 ### Агрегация правил
 - Эффективное правило вычисляется как логическое OR по всем ролям пользователя для данного элемента.
@@ -46,14 +46,14 @@
 ### Матрица методов → прав
 | Метод | Проверяемый флаг | Область действия |
 | --- | --- | --- |
-| GET (list/retrieve) | `read` или `read_all` | `read_all` — ко всем записям; `read` — только свои |
+| GET (list/retrieve) | `read` или `read_all` | `read_all` - ко всем записям; `read` - только свои |
 | POST | `create` | Создание записи от имени пользователя (становится владельцем) |
-| PUT/PATCH | `update` или `update_all` | `update_all` — ко всем; `update` — только свои |
-| DELETE | `delete` или `delete_all` | `delete_all` — ко всем; `delete` — только свои |
+| PUT/PATCH | `update` или `update_all` | `update_all` - ко всем; `update` - только свои |
+| DELETE | `delete` или `delete_all` | `delete_all` - ко всем; `delete` - только свои |
 
 ## JWT-аутентификация (коротко)
-- Логин (`POST /api/auth/login/`) выдаёт `access` и `refresh`. `refresh` фиксируется в БД (с `jti`).
-- Аутентификация — заголовок `Authorization: Bearer <access>`; валидируется и проверяется в blacklist.
+- Логин (`POST /api/auth/login/`) выдает `access` и `refresh`. `refresh` фиксируется в БД (с `jti`).
+- Аутентификация - заголовок `Authorization: Bearer <access>`; валидируется и проверяется в blacklist.
 - Обновление (`POST /api/auth/refresh/`) возвращает новый `access` при валидном неотозванном `refresh`.
 - Logout (`POST /api/auth/logout/`) добавляет текущий `access` в blacklist и отзывает `refresh`(ы).
 - Soft delete (`DELETE /api/auth/me/`) помечает пользователя `is_active=False` и отзывает все токены.
@@ -110,7 +110,7 @@ python -m venv .venv
 pip install -e .
 python manage.py migrate
 cp .env.example .env  # при необходимости заполнить
-python manage.py csu          # создаёт суперпользователя из переменных
+python manage.py csu          # создает суперпользователя из переменных
 python manage.py load_mock_data  # заполняет роли/элементы/демо-данные из CSV
 python manage.py runserver
 ```
@@ -120,20 +120,49 @@ python manage.py runserver
 - Убедитесь, что БД существует и доступна пользователю.
 - Затем выполните миграции и инициализацию как в разделе выше (`csu`, `load_mock_data`), после чего запустите сервер.
 
-### Docker (план)
-- Собрать образ с зависимостями (`pip install -e .`).
-- В entrypoint добавить шаги: `python manage.py migrate && python manage.py start` (команда `start` уже объединяет `csu + load_mock_data`; при желании можно расширить её другими импортами).
-- После инициализации запускать WSGI/ASGI-сервер (например, `gunicorn config.wsgi:application`).
-> Когда docker-compose будет добавлен, достаточно пробросить `.env` и окружение Postgres — вся подготовка данных выполнится автоматически через `manage.py start`.
+### Запуск через Docker / Docker Compose
+Требуется Docker и Docker Compose.
+
+1) Подготовьте переменные окружения
+- Возьмите `.env.example` и создайте `.env` в корне проекта (`efmob_test/`).
+- Обязательно укажите настройки БД и включите Postgres:
+  - `USE_POSTGRES=True`
+  - `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
+  - `POSTGRES_HOST=db_efmob_test` (имя сервиса в compose), `POSTGRES_PORT=5432`
+
+2) Запуск с помощью Docker Compose
+```bash
+docker compose up --build
+```
+- Compose поднимет `db` (Postgres) и `web` (Django).
+- `entrypoint.sh` внутри контейнера выполнит миграции и `python manage.py start`
+  (создаст суперпользователя из `.env` и загрузит мок‑данные из CSV).
+
+3) Проверка
+- Приложение: http://localhost:8000/
+- Swagger: http://localhost:8000/api/docs
+- Redoc: http://localhost:8000/api/redoc
+
+4) Полезные команды
+```bash
+# остановить контейнеры
+docker compose down
+
+# пересобрать и запустить заново
+docker compose up --build
+
+# полностью очистить том с данными Postgres
+docker compose down -v
+```
 
 ## Менеджмент-команды
-- `python manage.py csu` — создаёт суперпользователя из `SUPERUSER_*`.
-- `python manage.py load_mock_data [--data-dir=… --reset-passwords]` — читает CSV и создаёт роли, элементы, правила, демо-пользователей, demo-Items.
-- `python manage.py start` — агрегирует `csu` + `load_mock_data` (можно расширить доп. импортами).
+- `python manage.py csu` - создает суперпользователя из `SUPERUSER_*`.
+- `python manage.py load_mock_data [--data-dir=… --reset-passwords]` - читает CSV и создает роли, элементы, правила, демо-пользователей, demo-Items.
+- `python manage.py start` - агрегирует `csu` + `load_mock_data` (можно расширить доп. импортами).
 
 ## Проверка сценариев
-1. `POST /api/auth/register/` — создаёт пользователя.
-2. `POST /api/auth/login/` — получаем access/refresh.
+1. `POST /api/auth/register/` - создает пользователя.
+2. `POST /api/auth/login/` - получаем access/refresh.
 3. CRUD над `/api/items/`:
    - без токена → 401,
    - с ролью без прав → 403,
@@ -145,4 +174,3 @@ python manage.py runserver
 
 ## Дальнейшие улучшения
 - Добавить автотесты (auth, RBAC, отзыв токенов).
-- Подготовить Docker/compose (когда появится Dockerfile).
