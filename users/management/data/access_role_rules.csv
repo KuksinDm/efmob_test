@@ -1,0 +1,8 @@
+role,element,read,read_all,create,update,update_all,delete,delete_all
+admin,items,1,1,1,1,1,1,1
+admin,users,1,1,1,1,1,1,1
+admin,rbac,1,1,1,1,1,1,1
+manager,items,1,1,1,1,0,0,0
+user,items,1,0,1,1,0,1,0
+guest,items,0,0,0,0,0,0,0
+
