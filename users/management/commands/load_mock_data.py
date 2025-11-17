@@ -77,13 +77,13 @@ class Command(BaseCommand):
         elements_by_code: dict[str, BusinessElement] = {}
         for row in elements_csv:
             code, name = row["code"], row["name"]
-            el, created = BusinessElement.objects.get_or_create(
+            element, created = BusinessElement.objects.get_or_create(
                 code=code, defaults={"name": name}
             )
-            if not created and el.name != name:
-                el.name = name
-                el.save(update_fields=["name"])
-            elements_by_code[code] = el
+            if not created and element.name != name:
+                element.name = name
+                element.save(update_fields=["name"])
+            elements_by_code[code] = element
         self.stdout.write(self.style.SUCCESS(f"✔ Элементов: {len(elements_by_code)}"))
         return elements_by_code
 
@@ -108,15 +108,15 @@ class Command(BaseCommand):
             ],
         )
         for row in rules_csv:
-            r_name = row["role"]
-            e_code = row["element"]
-            if r_name not in roles_by_name:
-                raise CommandError(f"Правило для неизвестной роли: {r_name}")
-            if e_code not in elements_by_code:
-                raise CommandError(f"Правило для неизвестного элемента: {e_code}")
+            role_name = row["role"]
+            element_code = row["element"]
+            if role_name not in roles_by_name:
+                raise CommandError(f"Правило для неизвестной роли: {role_name}")
+            if element_code not in elements_by_code:
+                raise CommandError(f"Правило для неизвестного элемента: {element_code}")
             AccessRoleRule.objects.update_or_create(
-                role=roles_by_name[r_name],
-                element=elements_by_code[e_code],
+                role=roles_by_name[role_name],
+                element=elements_by_code[element_code],
                 defaults={
                     "read": to_bool(row["read"]),
                     "read_all": to_bool(row["read_all"]),
@@ -156,13 +156,19 @@ class Command(BaseCommand):
                 user.set_password(pwd)
                 user.save(update_fields=["password"] if not created else None)
 
-            role_names = [r.strip() for r in row["roles"].split(",") if r.strip()]
-            unknown = [r for r in role_names if r not in roles_by_name]
+            role_names = [
+                role_name.strip()
+                for role_name in row["roles"].split(",")
+                if role_name.strip()
+            ]
+            unknown = [
+                role_name for role_name in role_names if role_name not in roles_by_name
+            ]
             if unknown:
                 raise CommandError(
                     f"Для пользователя {email} не найдены роли: {unknown}"
                 )
-            user.roles.set([roles_by_name[r] for r in role_names])
+            user.roles.set([roles_by_name[role_name] for role_name in role_names])
             users_by_email[email] = user
         self.stdout.write(
             self.style.SUCCESS(f"✔ Демо-пользователей: {len(users_by_email)}")

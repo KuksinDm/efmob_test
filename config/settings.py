@@ -111,9 +111,10 @@ JWT_REFRESH_TTL_DAYS = env.int("JWT_REFRESH_TTL_DAYS", default=7)
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
-        "DEFAULT_AUTHENTICATION_CLASSES": [
+    "DEFAULT_AUTHENTICATION_CLASSES": [
             "users.authentication.RequestUserAuthentication",
     ],
+    "EXCEPTION_HANDLER": "users.exceptions.custom_exception_handler",
 }
 
 

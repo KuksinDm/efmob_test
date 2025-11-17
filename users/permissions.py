@@ -1,6 +1,7 @@
 from typing import Optional
 
 from django.contrib.auth import get_user_model
+from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 from .models import AccessRoleRule, BusinessElement
@@ -9,7 +10,7 @@ User = get_user_model()
 
 
 def get_effective_rule(user, element_code: str) -> Optional[dict]:
-    if not user.is_authenticated:
+    if not getattr(user, "is_authenticated", False):
         return None
     try:
         element = BusinessElement.objects.get(code=element_code)
@@ -36,14 +37,14 @@ def get_effective_rule(user, element_code: str) -> Optional[dict]:
         "delete": False,
         "delete_all": False,
     }
-    for r in rules:
-        agg["read"] = agg["read"] or r.read
-        agg["read_all"] = agg["read_all"] or r.read_all
-        agg["create"] = agg["create"] or r.create
-        agg["update"] = agg["update"] or r.update
-        agg["update_all"] = agg["update_all"] or r.update_all
-        agg["delete"] = agg["delete"] or r.delete
-        agg["delete_all"] = agg["delete_all"] or r.delete_all
+    for rule in rules:
+        agg["read"] = agg["read"] or rule.read
+        agg["read_all"] = agg["read_all"] or rule.read_all
+        agg["create"] = agg["create"] or rule.create
+        agg["update"] = agg["update"] or rule.update
+        agg["update_all"] = agg["update_all"] or rule.update_all
+        agg["delete"] = agg["delete"] or rule.delete
+        agg["delete_all"] = agg["delete_all"] or rule.delete_all
     return agg
 
 
@@ -54,9 +55,10 @@ class HasAccessPermission(BasePermission):
         element_code = getattr(view, "element_code", None)
         if not element_code:
             return True
+
         rule = get_effective_rule(request.user, element_code)
         if rule is None:
-            return False
+            raise NotAuthenticated()
 
         method = request.method.upper()
         if method in SAFE_METHODS:
@@ -75,7 +77,7 @@ class HasAccessPermission(BasePermission):
             return True
         rule = get_effective_rule(request.user, element_code)
         if rule is None:
-            return False
+            raise NotAuthenticated()
 
         method = request.method.upper()
         if method in SAFE_METHODS:

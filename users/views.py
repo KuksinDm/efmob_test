@@ -230,20 +230,20 @@ class AccessRuleViewSet(viewsets.ModelViewSet):
 class ItemViewSet(viewsets.ModelViewSet):
     queryset = Item.objects.select_related("owner").all()
     serializer_class = ItemSerializer
-    permission_classes = [permissions.IsAuthenticated, HasAccessPermission]
+    permission_classes = [HasAccessPermission]
     http_method_names = ["get", "post", "patch", "delete"]
     element_code = "items"
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        queryset = super().get_queryset()
         rule = get_effective_rule(self.request.user, self.element_code)
         if not rule:
-            return qs.none()
+            return queryset.none()
         if rule.get("read_all"):
-            return qs
+            return queryset
         if rule.get("read"):
-            return qs.filter(owner=self.request.user)
-        return qs.none()
+            return queryset.filter(owner=self.request.user)
+        return queryset.none()
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
